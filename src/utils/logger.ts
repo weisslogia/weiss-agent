@@ -8,7 +8,7 @@ export enum LogLevel {
   ERROR = 3,
 }
 
-class Logger {
+export class Logger {
   private level: LogLevel = LogLevel.INFO;
   private prefix = "[WEISS]";
 
@@ -16,71 +16,39 @@ class Logger {
     this.level = level;
   }
 
-  public debug(message: string | Array<unknown>, ...args: unknown[]): void {
+  public debug(message: string, ...args: unknown[]): void {
     if (this.level <= LogLevel.DEBUG) {
-      if (Array.isArray(message)) {
-        console.log(
-          `${chalk.cyan(this.prefix)} ${chalk.dim("DEBUG: ")}`,
-          ...args,
-        );
-        console.table(message);
-      } else {
-        console.log(
-          `${chalk.cyan(this.prefix)} ${chalk.dim(`DEBUG: ${message}`)}`,
-          ...args,
-        );
-      }
+      console.log(
+        `${chalk.cyan(this.prefix)} ${chalk.dim(`DEBUG: ${message}`)}`,
+        ...args,
+      );
     }
   }
 
-  public info(message: string | Array<unknown>, ...args: unknown[]): void {
+  public info(message: string, ...args: unknown[]): void {
     if (this.level <= LogLevel.INFO) {
-      if (Array.isArray(message)) {
-        console.log(
-          `${chalk.blue(this.prefix)} ${chalk.dim("INFO: ")}`,
-          ...args,
-        );
-        console.table(message);
-      } else {
-        console.log(
-          `${chalk.blue(this.prefix)} ${chalk.dim(`INFO: ${cliMd(message)}`)}`,
-          ...args,
-        );
-      }
+      console.log(
+        `${chalk.blue(this.prefix)} ${chalk.dim(`INFO: ${message}`)}`,
+        ...args,
+      );
     }
   }
 
-  public warn(message: string | Array<unknown>, ...args: unknown[]): void {
+  public warn(message: string, ...args: unknown[]): void {
     if (this.level <= LogLevel.WARN) {
-      if (Array.isArray(message)) {
-        console.warn(
-          `${chalk.yellow(this.prefix)} ${chalk.dim("WARN: ")}`,
-          ...args,
-        );
-        console.warn(message);
-      } else {
-        console.warn(
-          `${chalk.yellow(this.prefix)} ${chalk.dim(`WARN: ${message}`)}`,
-          ...args,
-        );
-      }
+      console.warn(
+        `${chalk.yellow(this.prefix)} ${chalk.dim(`WARN: ${message}`)}`,
+        ...args,
+      );
     }
   }
 
-  public error(message: string | Array<unknown>, ...args: unknown[]): void {
+  public error(message: string, ...args: unknown[]): void {
     if (this.level <= LogLevel.ERROR) {
-      if (Array.isArray(message)) {
-        console.error(
-          `${chalk.red(this.prefix)} ${chalk.dim("ERROR: ")}`,
-          ...args,
-        );
-        console.error(message);
-      } else {
-        console.error(
-          `${chalk.red(this.prefix)} ${chalk.dim(`ERROR: ${message}`)}`,
-          ...args,
-        );
-      }
+      console.error(
+        `${chalk.red(this.prefix)} ${chalk.dim(`ERROR: ${message}`)}`,
+        ...args,
+      );
     }
   }
 }

@@ -7,7 +7,7 @@ export class AgentCommand implements Command {
   readonly description = 'Init the agent';
 
   async execute(): Promise<void> {
-    const agent = new Agent('gpt/gpt-oss')
+    const agent = new Agent('essentialai/rnj-1')
     logger.info('Starting loop');
     await agent.AgentLoop()
     logger.info('Loop ended');

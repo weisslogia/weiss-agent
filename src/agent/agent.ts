@@ -1,23 +1,43 @@
 import chalk from "chalk";
 import readline from "node:readline/promises";
-import ollama from "ollama";
 import { handleResponseBuffer } from "../utils/response_buffer.js";
 import { AgentResponse } from "../types/agentResponse.js";
 import { AgentRequest } from "../types/agentRequest.js";
-
+import { LLM, LMStudioClient, Chat, tool } from "@lmstudio/sdk";
+import { z } from "zod";
+import { Tools } from "./tools.js";
+import cliMd from "cli-markdown";
+import { Logger, logger } from "../utils/logger.js";
+import { ReadDirectory } from "./tools/listDirectory.tool.js";
 export class Agent {
   private interface: readline.Interface;
   private isRunning: boolean;
-  private model: string;
   private reserveWords: string[];
+  private client: LMStudioClient;
+  private model: LLM | undefined
+  private history: Chat
+  private tools: Tools
   constructor(model: string) {
     this.interface = readline.createInterface({
       input: process.stdin,
       output: process.stdout,
     });
     this.isRunning = false;
-    this.model = model;
-    this.reserveWords = ["exit"];
+    this.client = new LMStudioClient()
+    this.setup(model)
+    this.reserveWords = ["exit", "clean", "test"];
+    this.history = Chat.from([
+      { role: 'system', content: this.generateSystemtPrompt() }
+    ])
+    this.tools = new Tools()
+  }
+
+  private generateSystemtPrompt(): string {
+    return `You are a helpful assistant, before any operation create a todo and execute all the steps in that todo, if searching for a file or a folder always search inside of all folders and subfolders starting from the current directory, to performe a search if the path was not provide start in the directory . for windows or ./ for linux or mac, avoid folder containing project dependencies or builds`
+  }
+
+  private async setup(model: string) {
+    this.model = await this.client.llm.model(model)
   }
 
   private async input(question: string = " "): Promise<string> {
@@ -25,95 +45,56 @@ export class Agent {
     return response;
   }
 
-  private handleReserveWord(word: string) {
+  private async handleReserveWord(word: string) {
     if (word === "exit") {
-      this.isRunning = false;
+      return this.isRunning = false;
+    }
+    if (word === "clean") {
+      return this.history = Chat.from([
+        { role: 'system', content: this.generateSystemtPrompt() }
+      ])
+    } else if (word === 'test') {
+      const f = new ReadDirectory()
+      const a = await f.execute({ path: '.' })
+      console.log(a)
+      return a
     }
   }
 
   public async askModel(question: string) {
-    const response = await ollama.chat({
-      model: this.model,
-      messages: [{ role: "user", content: question }],
-      think: 'medium',
-      tools: [
-        {
-          type: "function",
-          function: {
-            name: "get_weather",
-            description: "get country weather from its coordinates",
-            parameters: {
-              type: "object",
-              properties: {
-                x: {
-                  type: "number",
-                  description: "value of the x coordnate",
-                },
-                y: {
-                  type: "number",
-                  description: "value of the y coordnate",
-                },
-              },
-              required: ["x", "y"],
-            },
-          },
+    if (this.model) {
+      this.history.append({
+        role: 'user', content: question
+      })
+      let isThinking = true
+      const response = this.model.act(this.history, this.tools.toolsDefs(), {
+        onPredictionFragment: (({ content, reasoningType }) => {
+          if (reasoningType === 'reasoningStartTag') {
+            process.stdout.write('\n')
+          }
+          if (reasoningType === 'reasoningStartTag' || reasoningType === 'reasoningEndTag') {
+            process.stdout.write(chalk.magenta(content))
+          }
+          else if (reasoningType === 'reasoning') {
+            process.stdout.write(chalk.italic(chalk.dim(content)))
+          } else {
+            process.stdout.write(content)
+          }
+        }),
+        onMessage: (message) => {
+          this.history.append(message)
         },
-      ],
-      stream: true,
-    });
-    for await (const part of response) {
-        if(part.message.tool_calls) {
-            // process.stdout.write(part.message.tool_calls);
-            console.log(part.message.tool_calls);
-        }
+        maxPredictionRounds: 100,
+        allowParallelToolExecution: true
+      })
+      return response
     }
-    return response;
-    // const payload: AgentRequest = {
-    //   model: this.model,
-    //   messages: [
-    //     {
-    //       role: "user",
-    //       content: question,
-    //     },
-    //   ],
-    //   stream: false,
-    //   tools: [
-    //     {
-    //       type: "function",
-    //       function: {
-    //         name: "get_weather",
-    //         description: "get country weather from its coordinates",
-    //         parameters: {
-    //           type: "object",
-    //           properties: {
-    //             x: {
-    //               type: "number",
-    //               description: "value of the x coordnate",
-    //             },
-    //             y: {
-    //               type: "number",
-    //               description: "value of the y coordnate",
-    //             },
-    //           },
-    //           required: ["x", "y"],
-    //         },
-    //       },
-    //     },
-    //   ],
-    // };
-    // const response = await ollama.post<AgentResponse>("/chat", payload, {
-    // //   responseType: "stream",
-    // });
-    // return response;
-    // return handleResponseBuffer(response.data);
+    return null
   }
 
-  //   private async internalQuestion(
-  //     payload: AgentRequest,
-  //   ): Promise<AgentResponse> {
-  //     const response = await ollama.post<AgentResponse>("/chat", payload);
-  //     return response.data;
-  //   }
+
+
+
 
   public async AgentLoop() {
     this.isRunning = true;
@@ -125,44 +106,9 @@ export class Agent {
           (el) => el.toLowerCase() === aiQuestion.toLocaleLowerCase(),
         )
       ) {
-        this.handleReserveWord(aiQuestion.toLocaleLowerCase());
+        await this.handleReserveWord(aiQuestion.toLocaleLowerCase());
       } else {
-        // const r = await this.internalQuestion({
-        //   model: this.model,
-        //   messages: [
-        //     {
-        //       role: "user",
-        //       content: aiQuestion,
-        //     },
-        //   ],
-        //   stream: false,
-        //   tools: [
-        //     {
-        //       type: "function",
-        //       function: {
-        //         name: "get_weather",
-        //         description: "get country weather from its coordinates",
-        //         parameters: {
-        //           type: "object",
-        //           properties: {
-        //             x: {
-        //               type: "number",
-        //               description: "value of the x coordnate",
-        //             },
-        //             y: {
-        //               type: "number",
-        //               description: "value of the y coordnate",
-        //             },
-        //           },
-        //           required: ["x", "y"],
-        //         },
-        //       },
-        //     },
-        //   ],
-        // });
-        // console.log(r)
         const aiResponse = await this.askModel(aiQuestion);
-        // console.log(aiResponse);
       }
       // logger.info(aiResponse.)
     }
