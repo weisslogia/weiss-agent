@@ -7,7 +7,7 @@ import { stdout } from "node:process";
 
 export class CreateDirectory extends ITool {
     constructor() {
-        super('createDirectory', 'given a path and a name create a folder if not exists', { path: z.string(), name: z.string() })
+        super('createDirectory', 'given a path and a name create a folder if not exists', z.object({ path: z.string(), name: z.string() }))
     }
     public async execute(params: { path: string, name: string }) {
         try {

@@ -7,7 +7,7 @@ import { stdout } from "node:process";
 
 export class FindFile extends ITool {
     constructor() {
-        super('findFile', 'given a file name return its path', { name: z.string() })
+        super('findFile', 'given a file name return its path', z.object({ name: z.string() }))
     }
     public async execute(params: { name: string }) {
         try {

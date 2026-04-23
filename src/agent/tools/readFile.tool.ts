@@ -6,7 +6,7 @@ import { stdout } from "node:process";
 
 export class ReadFile extends ITool {
     constructor() {
-        super('readFile', 'given a file path return the content of the file', { path: z.string() })
+        super('readFile', 'given a file path return the content of the file', z.object({ path: z.string() }))
     }
     public async execute(params: { path: string }) {
         try {

@@ -1,5 +1,4 @@
 import chalk from "chalk";
-import cliMd from "cli-markdown";
 
 export enum LogLevel {
   DEBUG = 0,
@@ -25,12 +24,17 @@ export class Logger {
     }
   }
 
-  public info(message: string, ...args: unknown[]): void {
+  public info(message: string | Array<any>, ...args: unknown[]): void {
     if (this.level <= LogLevel.INFO) {
-      console.log(
-        `${chalk.blue(this.prefix)} ${chalk.dim(`INFO: ${message}`)}`,
-        ...args,
-      );
+      if (Array.isArray(message)) {
+        console.log(`${chalk.blue(this.prefix)} INFO:`);
+        console.table(message);
+      } else {
+        console.log(
+          `${chalk.blue(this.prefix)} ${chalk.dim(`INFO: ${message}`)}`,
+          ...args,
+        );
+      }
     }
   }
 
